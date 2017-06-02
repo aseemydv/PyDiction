@@ -29,14 +29,14 @@ ui_path = cur_file + delim
 DELAY = 80
 DELAY2 = 20
 
-
 ##### METHODS FOR EVERY FUNCTIONALITY #####
 class UI(tk.Label):
     def __init__(self, master):
         super(UI, self).__init__()
         self.build = pygubu.Builder()
-        self.build.add_from_file(ui_path + '../UI/tk_gui_gif.ui')
-        self.build.get_object('main_label',master)
+        #self.build.add_from_file(ui_path + '../UI/tk_gui_gif.ui')
+        self.build.add_from_file(ui_path + '../UI/tk_gui_bg.ui')
+        self.main = self.build.get_object('main_label',master)
         self.keyword = ""
         self.dict = self.build.get_object('dictionary')
         self.synon = self.build.get_object('synonyms')
@@ -44,6 +44,7 @@ class UI(tk.Label):
         self.etymo = self.build.get_object('ety')
         self.pro = self.build.get_object('pro')
         self.progress = self.build.get_object('progress')
+        self.progress.grid_forget()
         self.label1 = self.build.get_object('key_label')
         self.label1.config(font=('Georgia', 13, 'bold'))
         self.dict.config(variable=rval)
@@ -54,13 +55,21 @@ class UI(tk.Label):
         self.build.connect_callbacks(self)
         self.mainwindow = self.build.get_object('main_label', master)
 
+        ######### ADD IMAGE TO BACKGROUND ############
+        #self.canvas = self.build.get_object('Canvas_1')
+        #self.canvas.lower(self.build)
+        #background_image = tk.PhotoImage('../UI/bg.jpg')
+        #background_label = tk.Label(self.main, image=background_image)
+
+        #self.canvas.create_image(0, 0, image=background_image, anchor='nw')
+        #background_label.place(x=0, y=0, relwidth=1, relheight=1)
 ############CODE FOR RUNNING ANIMATED PROGRESS BAR###############
     def load(self, im):
         if isinstance(im, str):
             im = Image.open(im)
         self.loc = 0
         self.frames = []
-
+        self.info = tk.Label(text='', width=200, borderwidth=0.1, relief="solid")
         try:
             for i in count(1):
                 self.frames.append(ImageTk.PhotoImage(im.copy()))
@@ -74,23 +83,26 @@ class UI(tk.Label):
             self.delay = 100
 
         if len(self.frames) == 1:
-            self.config(image=self.frames[0])
+            self.info.config(image=self.frames[0])
         else:
             self.next_frame()
 
     def unload(self):
+
         #self.config(image=None)
         self.frames = None
+        #self.info.config(width = 0, borderwidth = 0)
         #self.info.config(image=None)
-        #self.info.lower(self.mainwindow)
-        self.info.grid_remove()
+        self.info.destroy()
+        #self.info.pack_remove()
+        #self.info.pack_forget()
 
     def next_frame(self):
         #print("print this multiple times.")
         if self.frames:
             self.loc += 1
             self.loc %= len(self.frames)
-            self.info = tk.Label(text = '', width=200, borderwidth=1, relief="solid")
+
             #self.info.lower(self.mainwindow)
             self.info.place(relx=1.0, rely=1.0, x=-100, y=-170, anchor="se")
             self.info.config(image = self.frames[self.loc])
@@ -98,7 +110,6 @@ class UI(tk.Label):
             #self.place(relx=1.0, rely=1.0, x=-2, y=-2, anchor="se")
             self.after(self.delay, self.next_frame)
 
-    
 ####################################################
 
     def etymology(self):
@@ -126,13 +137,15 @@ class UI(tk.Label):
             self.after(DELAY, self.onGetValue)
             return
         else:
-            self.progress.stop()
+            #self.progress.stop()
+            #self.progress.grid_forget()
             #self.info.lower(self.mainwindow)
-            #self.unload()
+            self.unload()
             self.print_listbox()
 
     def synonyms(self):
         visit_synon = 'https://od-api.oxforddictionaries.com:443/api/v1/entries/en/'+self.keyword.lower()+'/synonyms'
+        self.call_api(visit_synon)
         self.page_synon = self.page
         self.dump = json.dumps(self.page_synon.json())
         self.response_s = json.loads(self.dump)
@@ -145,7 +158,7 @@ class UI(tk.Label):
 
     def antonyms(self):
         visit_anton = 'https://od-api.oxforddictionaries.com:443/api/v1/entries/en/'+self.keyword.lower()+'/antonyms'
-        self.page_anton = self.call_api(visit_anton)
+        self.call_api(visit_anton)
         self.page_anton = self.page
         self.dump = json.dumps(self.page_anton.json())
         self.response_a = json.loads(self.dump)
@@ -208,11 +221,11 @@ class UI(tk.Label):
 
         self.p1 = threading.Thread(target=self.call_api, args=(visit,))
         self.p1.start()
-        self.progress.start(DELAY2)
+        self.load('../UI/hProgress.gif')
+        #self.progress.start(DELAY2)
         self.after(DELAY, self.onGetValue)
 
     def print_listbox(self, not_word=False):
-
         print(self.p1.is_alive())
         print("Response Code: "+str(self.page.status_code))
         print(self.page.content)
@@ -230,7 +243,7 @@ class UI(tk.Label):
         ## GET SCROLLBAR
         scrollb = self.build.get_object('Scrollbar_1')
         scrollb.config(command=content.yview)
-        content.configure(yscrollcommand=scrollb.set, font=('Georgia', 10))
+        content.configure(yscrollcommand=scrollb.set)
         content.tag_configure("B_I", font = ('Helvetica', 11, 'italic'))
         content.config(state='normal')
         if not_word or "404" in self.page.text:
@@ -273,11 +286,12 @@ class UI(tk.Label):
             try:
                 syn = self.synonyms()
                 if len(syn) == 1:
+                    content.insert("end", "\n")
                     content.insert("end", val[0])
                 else:
-                    content.insert("end", "\n")
                     for i,val in enumerate(syn):
-                        content.insert("end", str(i+1) + ": " + format(val) + "\n")
+                        content.insert("end", "\n")
+                        content.insert("end", str(i+1) + ": " + format(val))
             except:
                 content.insert("end", 'N/A')
                 pass
@@ -286,11 +300,12 @@ class UI(tk.Label):
             try:
                 ant = self.antonyms()
                 if len(ant) == 1:
+                    content.insert("end", "\n")
                     content.insert("end", "1: "+ant[0])
                 else:
-                    content.insert("end", "\n")
                     for i,val in enumerate(ant):
-                        content.insert("end", str(i+1) + ": " + format(val) + "\n")
+                        content.insert("end", "\n")
+                        content.insert("end", str(i+1) + ": " + format(val))
             except:
                 content.insert("end", 'N/A')
                 pass
