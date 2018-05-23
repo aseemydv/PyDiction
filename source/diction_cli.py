@@ -354,7 +354,6 @@ class UI(tk.Label):
         final teardown method, for closing the window and quit
         the user interface window.
         """
-        global root
         root.quit()
         root.destroy()
 
